@@ -1,46 +1,49 @@
-# Bks Azure DevOps CI/CD Pipeline
 trigger:
-- '*'
-
-#pool:
-#  vmImage: ubuntu-latest
+  - '*'  # Trigger for all changes
 
 pool:
-  name: Default
+  name: Default  # Ensure the agent pool name is correct
   demands:
-    - agent.name -equals LAPTOP-SC1VL3NB
+    - agent.name -equals LAPTOP-SC1VL3NB  # This should match your self-hosted agent's name
 
 variables:
   buildConfiguration: 'Release'
 
 steps:
+# Use .NET SDK version 6.x
 - task: UseDotNet@2
   displayName: 'Use .NET SDK 6.x'
   inputs:
     packageType: sdk
     version: '6.x'
 
+# Run npm install
 - task: Npm@1
   displayName: 'Run npm install'
   inputs:
     verbose: false
 
+# Compile Sass assets
 - script: './node_modules/.bin/node-sass Tailspin.SpaceGame.Web/wwwroot --output Tailspin.SpaceGame.Web/wwwroot'
   displayName: 'Compile Sass assets'
 
+# Run gulp tasks
 - task: gulp@1
   displayName: 'Run gulp tasks'
 
+# Write build information to a file
 - script: 'echo "$(Build.DefinitionName), $(Build.BuildId), $(Build.BuildNumber)" > buildinfo.txt'
   displayName: 'Write build info'
   workingDirectory: Tailspin.SpaceGame.Web/wwwroot
 
+# Restore .NET Core project dependencies
 - task: DotNetCoreCLI@2
   displayName: 'Restore project dependencies'
   inputs:
     command: 'restore'
     projects: '**/*.csproj'
 
+# Build the .NET Core project (Release configuration)
 - task: DotNetCoreCLI@2
   displayName: 'Build the project - Release'
   inputs:
@@ -48,7 +51,7 @@ steps:
     arguments: '--no-restore --configuration Release'
     projects: '**/*.csproj'
 
-  # Publish the project to a zip folder
+# Publish the .NET Core project
 - task: DotNetCoreCLI@2
   displayName: 'Publish project'
   inputs:
@@ -57,17 +60,9 @@ steps:
     projects: '**/*.csproj'
 
 # Deploy to Azure App Service
-#- task: AzureWebApp@1
-#  displayName: 'Deploy to Azure App Service'
-#  inputs:
-#    azureSubscription: 'BksAzureConnection'
-#    appName: 'SpaceGameByBks'
-#    package: '$(Build.ArtifactStagingDirectory)/**/*.zip'
-# Deploy to Azure App Service
 - task: AzureWebApp@1
   displayName: 'Deploy to Azure App Service'
   inputs:
-    azureSubscription: 'spacegame002'
-    appName: 'spacegameraji'
-    package: '$(Build.ArtifactStagingDirectory)/**/*.zip'
-
+    azureSubscription: 'spacegame002'  # Ensure the Azure subscription connection is valid
+    appName: 'spacegameraji'  # Ensure this matches the name of your Azure App Service
+    package: '$(Build.ArtifactStagingDirectory)/**/*.zip'  # Deploy the zip package of the published project
